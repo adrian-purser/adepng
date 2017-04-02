@@ -78,7 +78,7 @@
 #include <memory>
 #include <functional>
 
-//#define HAVE_MINIZ
+#define HAVE_MINIZ
 
 namespace adepng
 {
