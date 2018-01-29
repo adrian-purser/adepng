@@ -28,7 +28,7 @@
 #define MINIZ_NO_TIME
 #define MINIZ_NO_ZLIB_APIS
 #define MINIZ_NO_MALLOC
-#include "miniz.c"
+#include <miniz.c>
 #endif
 
 #define CHUNK_NAME(a,b,c,d) ( (((a)&0x0FF)<<24) | (((b)&0x0FF)<<16) | (((c)&0x0FF)<<8) | ((d)&0x0FF) )
