@@ -21,16 +21,6 @@
 #include <cstring>
 #include "adepng.h"
 
-#ifdef HAVE_MINIZ
-#define MINIZ_HEADER_FILE_ONLY
-#define MINIZ_NO_STDIO
-#define MINIZ_NO_ARCHIVE_APIS
-#define MINIZ_NO_TIME
-#define MINIZ_NO_ZLIB_APIS
-#define MINIZ_NO_MALLOC
-#include <miniz.c>
-#endif
-
 #define CHUNK_NAME(a,b,c,d) ( (((a)&0x0FF)<<24) | (((b)&0x0FF)<<16) | (((c)&0x0FF)<<8) | ((d)&0x0FF) )
 
 #define CHUNK_IHDR CHUNK_NAME('I','H','D','R')
@@ -57,6 +47,16 @@ enum
 
 namespace adepng
 {
+
+#ifdef HAVE_MINIZ
+//#define MINIZ_HEADER_FILE_ONLY
+#define MINIZ_NO_STDIO
+#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_NO_TIME
+#define MINIZ_NO_ZLIB_APIS
+#define MINIZ_NO_MALLOC
+#include <miniz.c>
+#endif
 
 static unsigned char png_ident[8] = { 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A };
 
