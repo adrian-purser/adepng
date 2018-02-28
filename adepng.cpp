@@ -55,7 +55,7 @@ namespace adepng
 #define MINIZ_NO_TIME
 #define MINIZ_NO_ZLIB_APIS
 #define MINIZ_NO_MALLOC
-#include <miniz.c>
+#include "miniz.c"
 #endif
 
 static unsigned char png_ident[8] = { 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A };
@@ -91,6 +91,8 @@ public:
 	~InflateToCallback() = default;
 	InflateToCallback(const InflateToCallback &) = delete;
 	InflateToCallback & operator=(const InflateToCallback &) = delete;
+	InflateToCallback(InflateToCallback &&) = default;
+	InflateToCallback & operator=(InflateToCallback &&) = default;
 
 	void create(const std::function<int(const std::uint8_t *,size_t)> & callback,	size_t buffer_size = TINFL_LZ_DICT_SIZE )
 	{
@@ -104,9 +106,9 @@ public:
 
 	int write(const std::uint8_t * p_data,size_t size)
 	{
-		int					result			= INCOMPLETE;
-		size_t			in_buf_ofs	= 0;
-		mz_uint8 *	p_out				= (mz_uint8 *)&m_output_buffer[0];
+		int			result			= INCOMPLETE;
+		size_t	in_buf_ofs	= 0;
+		auto *	p_out				= static_cast<mz_uint8 *>(&m_output_buffer[0]);
 
 		while( (result == INCOMPLETE) && ((size-in_buf_ofs) > 0) )
 		{
@@ -117,7 +119,7 @@ public:
 			size_t	dst_buf_size	= m_output_buffer.size() - m_out_ofs;
 
 			tinfl_status status		= tinfl_decompress(	&m_decompressor,
-																								(const mz_uint8*)p_data + in_buf_ofs,
+																								static_cast<const mz_uint8*>(p_data) + in_buf_ofs,
 																								&in_buf_size,
 																								p_out,
 																								p_out + m_out_ofs,
@@ -132,9 +134,9 @@ public:
 			//	If finished or the buffer is full then flush the buffer 
 			//	contents by calling the registered callback function.
 			//-----------------------------------------------------------------
-			if(	m_out_ofs && ((status <= TINFL_STATUS_DONE) || (m_out_ofs == m_output_buffer.size())) )
+			if( (m_out_ofs != 0u) && ((status <= TINFL_STATUS_DONE) || (m_out_ofs == m_output_buffer.size())) )
 			{
-				if(m_callback(&m_output_buffer[0],m_out_ofs))
+				if(m_callback(&m_output_buffer[0],m_out_ofs) != 0)
 				{
 					result = ERROR;
 					break;
@@ -169,12 +171,17 @@ private:
 	const std::uint8_t *	m_p_data			= nullptr;
 	size_t								m_size				= 0;
 	size_t								m_bits				= 0;
-	size_t								m_buffer_size		= 0;
+	size_t								m_buffer_size	= 0;
 	std::uint16_t					m_buffer			= 0;
 
 public:
 	BitStreamIn() = default;
 	~BitStreamIn() = default;
+	BitStreamIn(const BitStreamIn &) = default;
+	BitStreamIn & operator=(const BitStreamIn &) = default;
+	BitStreamIn(BitStreamIn &&) = default;
+	BitStreamIn & operator=(BitStreamIn &&) = default;
+
 	BitStreamIn(const std::uint8_t *	p_data,
 							size_t								size,
 							size_t								bits )
@@ -186,17 +193,17 @@ public:
 	}
 
 	size_t	size_bits() const	noexcept	{return (m_size * 8) + m_buffer_size;}
-	size_t	remainder() const	noexcept	{return (m_bits ? (size_bits()%m_bits) : 0);}
-	size_t	size() const noexcept				{return (m_bits ? (size_bits()/m_bits) : 0);}
+	size_t	remainder() const	noexcept	{return (m_bits != 0u ? (size_bits()%m_bits) : 0);}
+	size_t	size() const noexcept				{return (m_bits != 0u ? (size_bits()/m_bits) : 0);}
 	bool		empty() const noexcept			{return !!(size() > 0);}
 
 	std::uint8_t read() noexcept
 	{
 		if(m_buffer_size < m_bits)
 		{
-			if(!m_size)
+			if(m_size == 0u)
 				return 0;
-			m_buffer |= ((std::uint16_t)(*m_p_data++)) << (8-m_buffer_size);
+			m_buffer |= (static_cast<std::uint16_t>(*m_p_data++)) << (8-m_buffer_size);
 			m_buffer_size += 8;
 			--m_size;
 		}
@@ -239,7 +246,7 @@ static void make_crc_table()
 		std::uint32_t c(n);
 		for(std::uint32_t k=0;k<8;++k) 
 		{
-			if(c & 1)
+			if((c & 1) != 0u)
 				c = 0xedb88320L ^ (c >> 1);
 			else
 				c >>= 1;
@@ -274,35 +281,27 @@ std::uint32_t calculate_crc(const unsigned char *buf, int len)
 //
 //=============================================================================
 
-PNGEncode::PNGEncode(void)
+PNGEncode::PNGEncode()
 	: m_compression(0)
 	, m_filter(0)
 	, m_interlace(0)
 {
 }
 
-PNGEncode::~PNGEncode(void)
-{
-}
-
-
 int
-PNGEncode::encode(	int										width,
-										int										height,
-										int										depth,
-										ColourType						type,
-										const unsigned char *	p_data,
-										png_write_func				write_func,
-										int										compression_level )
+PNGEncode::encode(	int											width,
+										int											height,
+										int											depth,
+										ColourType							type,
+										const unsigned char *		p_data,
+										const png_write_func &	write_func,
+										int											compression_level )
 {
-	if(!write_func)
-		return -1;
-
-	if(!p_data)
+	if(!write_func || (p_data == nullptr))
 		return -1;
 
 	//	Write the file header.
-	write_func(png_ident,sizeof(png_ident));
+	write_func(static_cast<const unsigned char *>(png_ident),sizeof(png_ident));
 
 	write_IHDR_chunk(width,height,depth,type,write_func);
 	write_text(write_func);
@@ -339,38 +338,38 @@ PNGEncode::add_text(const std::string & keyword,
 }
 
 void
-PNGEncode::write_chunk(	std::uint32_t					chunk_id,
-												const unsigned char *	p_data,
-												size_t								datasize,
-												png_write_func				write_func )
+PNGEncode::write_chunk(	std::uint32_t						chunk_id,
+												const unsigned char *		p_data,
+												size_t									datasize,
+												const png_write_func &	write_func )
 {
 	unsigned char tempdata[8];
 
 	//	Write the header
-	write_long(static_cast<std::uint32_t>(datasize),tempdata);
+	write_long(static_cast<std::uint32_t>(datasize),&tempdata[0]);
 	write_long(chunk_id,&tempdata[4]);
-	write_func(tempdata,8);
+	write_func(&tempdata[0],8);
 	std::uint32_t crc = update_crc(0xffffffffL, &tempdata[4], 4);
 
 	//	Write the payload
-	if(p_data && datasize)
+	if((p_data != nullptr) && (datasize != 0))
 	{
 		write_func(p_data,datasize);
 		crc = update_crc(crc,static_cast<const unsigned char *>(p_data),datasize);
 	}
 
 	//	Write the crc
-	write_long(crc ^ 0xffffffffL,tempdata);
-	write_func(tempdata,4);
+	write_long(crc ^ 0xffffffffL,&tempdata[0]);
+	write_func(&tempdata[0],4);
 }
 
 
 void
-PNGEncode::write_IHDR_chunk(int							width,
-														int							height,
-														int							depth,
-														ColourType			type,
-														png_write_func	write_func )
+PNGEncode::write_IHDR_chunk(int											width,
+														int											height,
+														int											depth,
+														ColourType							type,
+														const png_write_func &	write_func )
 {
 	std::uint8_t ihdr[IHDR_SIZE];
 
@@ -383,11 +382,11 @@ PNGEncode::write_IHDR_chunk(int							width,
 	ihdr[IHDR_FILTER]					= m_filter;
 	ihdr[IHDR_INTERLACE]			= m_interlace;
 
-	write_chunk(CHUNK_IHDR,ihdr,IHDR_SIZE,write_func);
+	write_chunk(CHUNK_IHDR,&ihdr[0],IHDR_SIZE,write_func);
 }
 
 void
-PNGEncode::write_text(png_write_func write_func)
+PNGEncode::write_text(const png_write_func & write_func)
 {
 	for(auto & text : m_text)
 	{
@@ -399,23 +398,23 @@ PNGEncode::write_text(png_write_func write_func)
 }
 
 void
-PNGEncode::write_tEXt_chunk(TextField * p_text,png_write_func write_func )
+PNGEncode::write_tEXt_chunk(TextField * p_text,const png_write_func & write_func )
 {
-	if(p_text)
+	if(p_text != nullptr)
 	{
 		std::string data(p_text->keyword);
 		data.push_back(0);
 		data.append(p_text->text);
 		
-		write_chunk(CHUNK_tEXt,(const unsigned char *)data.c_str(),data.size(),write_func);
+		write_chunk(CHUNK_tEXt,reinterpret_cast<const unsigned char *>(data.c_str()),data.size(),write_func);
 	}
 }
 
 
 void
-PNGEncode::write_iTXt_chunk(TextField * p_text,png_write_func write_func )
+PNGEncode::write_iTXt_chunk(TextField * p_text,const png_write_func & write_func )
 {
-	if(p_text)
+	if(p_text != nullptr)
 	{
 		std::string data(p_text->keyword);				// Keyword
 		data.push_back(0);												// Keyword terminator
@@ -427,18 +426,18 @@ PNGEncode::write_iTXt_chunk(TextField * p_text,png_write_func write_func )
 
 		data.append(p_text->text);
 		
-		write_chunk(CHUNK_iTXt,(const unsigned char *)data.c_str(),data.size(),write_func);
+		write_chunk(CHUNK_iTXt,reinterpret_cast<const unsigned char *>(data.c_str()),data.size(),write_func);
 	}
 }
 
 void
-PNGEncode::write_image_data(int										width,
-														int										height,
-														int										depth,
-														ColourType						type,
-														const unsigned char *	p_data,
-														png_write_func				write_func,
-														int										compression_level )
+PNGEncode::write_image_data(int											width,
+														int											height,
+														int											depth,
+														ColourType							type,
+														const unsigned char *		p_data,
+														const png_write_func &	write_func,
+														int											compression_level )
 {
 	if(compression_level == 0)
 		write_image_data_uncompressed(width,height,depth,type,p_data,write_func);
@@ -447,12 +446,12 @@ PNGEncode::write_image_data(int										width,
 }
 
 void
-PNGEncode::write_image_data_uncompressed(	int										width,
-																					int										height,
-																					int										depth,
-																					ColourType						type,
-																					const unsigned char *	p_data,
-																					png_write_func				write_func )
+PNGEncode::write_image_data_uncompressed(	int											width,
+																					int											height,
+																					int											depth,
+																					ColourType							type,
+																					const unsigned char *		p_data,
+																					const png_write_func &	write_func )
 {
 	std::array<unsigned char,m_idat_chunk_size>	buffer;
 	
@@ -470,7 +469,7 @@ PNGEncode::write_image_data_uncompressed(	int										width,
 		bool b_filter = true;
 		const unsigned char * p_rowdata = p_data + y*span;
 
-		while(remaining || (chunk_size && (y==height-1)))
+		while((remaining != 0u) || ((chunk_size != 0) && (y==(height-1))))
 		{
 			//-----------------------------------------------------------------
 			//	If the chunk is empty then write the header to it.
@@ -502,7 +501,7 @@ PNGEncode::write_image_data_uncompressed(	int										width,
 			//	If the chunk is full or if there is no more data and the chunk
 			//	is not empty then write the chunk.
 			//-----------------------------------------------------------------
-			if(!actionable && (chunk_size > chunk_header_size))
+			if((actionable == 0u) && (chunk_size > chunk_header_size))
 			{
 				buffer[hdr_offset+2]	= ((chunk_size-chunk_header_size)>>8)&0x0FF;
 				buffer[hdr_offset+1]	= (chunk_size-chunk_header_size)&0x0FF;
@@ -510,7 +509,7 @@ PNGEncode::write_image_data_uncompressed(	int										width,
 				buffer[hdr_offset+4]	= buffer[hdr_offset+2] ^ 0x0FF;
 
 				// If this is the last block then set the BFINAL bit in the header.
-				if(!remaining && (y==height-1))
+				if((remaining == 0u) && (y==(height-1)))
 				{
 					buffer[hdr_offset] |= 1;
 				//TODO: write adler32;
@@ -526,7 +525,7 @@ PNGEncode::write_image_data_uncompressed(	int										width,
 				//	If there is source data available then write it to the 
 				//	chunk buffer.
 				//-------------------------------------------------------------
-				while(actionable)
+				while(actionable != 0u)
 				{
 					// If this is the start of a row then write the filter byte.
 					if(b_filter)
@@ -542,7 +541,7 @@ PNGEncode::write_image_data_uncompressed(	int										width,
 						chunk_size+=actionable;
 						p_rowdata+=actionable;
 						remaining -= actionable;
-						actionable = 0;
+						actionable = 0u;
 					}
 				}
 			}
@@ -551,12 +550,12 @@ PNGEncode::write_image_data_uncompressed(	int										width,
 }
 
 int
-PNGEncode::write_image_data_compressed(	int										width,
-																				int										height,
-																				int										depth,
-																				ColourType						type,
-																				const unsigned char *	p_data,
-																				png_write_func				write_func,
+PNGEncode::write_image_data_compressed(	int											width,
+																				int											height,
+																				int											depth,
+																				ColourType							type,
+																				const unsigned char *		p_data,
+																				const png_write_func &	write_func,
 																				int						/*compression_level*/ )
 {
 #ifdef HAVE_MINIZ
@@ -583,11 +582,11 @@ PNGEncode::write_image_data_compressed(	int										width,
 	tdefl_init(	p_comp,
 				[](const void *pBuf, int len, void *pUser)->mz_bool
 				{
-					const unsigned char * p_data = (const unsigned char *)pBuf;
-					WriterInfo * p_writer = (WriterInfo *)pUser;
-					while(len)
+					auto p_data = static_cast<const unsigned char *>(pBuf);
+					auto p_writer = static_cast<WriterInfo *>(pUser);
+					while(len > 0)
 					{
-						int size = std::min(len,(int)m_idat_chunk_size);
+						int size = std::min<int>(len,m_idat_chunk_size);
 						p_writer->p_encoder->write_chunk(CHUNK_IDAT,p_data,size,p_writer->write_func);
 						len -= size;
 						p_data += size;
@@ -1018,7 +1017,7 @@ PNGDecode::decode2(const char * p_data,size_t datasize,int components,bool /*b_s
 		return log_error("The file is too short for a valid PNG");
 
 	static unsigned char ident[8] = { 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A };
-	if(memcmp(p_data,ident,8))
+	if(memcmp(p_data,&ident[0],8) != 0)
 		return log_error("The file is not valid PNG format!");
 
 	p_data += 8;
@@ -1043,11 +1042,11 @@ PNGDecode::decode2(const char * p_data,size_t datasize,int components,bool /*b_s
 	//-------------------------------------------------------------------------
 	bool b_ihdr_chunk = false;
 
-	const unsigned char * p_dat = (const unsigned char *)p_data;
+	auto p_dat			= reinterpret_cast<const unsigned char *>(p_data);
 	bool b_finished = false;
-	bool b_error = false;
+	bool b_error		= false;
 
-	while(datasize && !b_finished && !b_error)
+	while((datasize != 0) && !b_finished && !b_error)
 	{
 		//---------------------------------------------------------------------
 		//	Check that there is enough data for the chunk header.
@@ -1062,9 +1061,9 @@ PNGDecode::decode2(const char * p_data,size_t datasize,int components,bool /*b_s
 		//---------------------------------------------------------------------
 		//	Read the chunk length,type & CRC.
 		//---------------------------------------------------------------------
-		std::uint32_t	length			= read32(p_dat);
-		std::uint32_t	type			= read32(p_dat+4);
-		std::uint8_t *	p_chunk_data	= (std::uint8_t *)p_dat+PNG_CHUNK_HEADER_SIZE;
+		std::uint32_t	length				= read32(p_dat);
+		std::uint32_t	type					= read32(p_dat+4);
+		auto					p_chunk_data	= static_cast<const std::uint8_t *>(p_dat)+PNG_CHUNK_HEADER_SIZE;
 
 		if(length > datasize)
 		{
@@ -1074,7 +1073,7 @@ PNGDecode::decode2(const char * p_data,size_t datasize,int components,bool /*b_s
 		}
 
 		std::uint32_t chunk_crc	= read32(p_dat+PNG_CHUNK_HEADER_SIZE+length);
-		std::uint32_t calc_crc	= calculate_crc((const unsigned char *)(p_dat+4),length+4);
+		std::uint32_t calc_crc	= calculate_crc(static_cast<const unsigned char *>(p_dat+4),length+4);
 
 		p_dat += PNG_CHUNK_OVERHEAD+length;
 		datasize -= PNG_CHUNK_OVERHEAD+length;
@@ -1091,8 +1090,8 @@ PNGDecode::decode2(const char * p_data,size_t datasize,int components,bool /*b_s
 
 		switch(type)
 		{
-			case CHUNK_IHDR : b_error = !!process_chunk_ihdr(p_chunk_data,length); b_ihdr_chunk = !b_error; break;	
-			case CHUNK_PLTE : b_error = !!process_chunk_plte(p_chunk_data,length); break;	
+			case CHUNK_IHDR : b_error = process_chunk_ihdr(p_chunk_data,length) != 0; b_ihdr_chunk = !b_error; break;
+			case CHUNK_PLTE : b_error = process_chunk_plte(p_chunk_data,length) != 0; break;
 			case CHUNK_tEXt : process_chunk_text(p_chunk_data,length); break;	
 			case CHUNK_iTXt : process_chunk_itxt(p_chunk_data,length); break;	
 			case CHUNK_IEND : b_finished = true; break;
@@ -1119,25 +1118,25 @@ PNGDecode::process_chunk_text(const std::uint8_t * p_data,size_t datasize)
 	const std::uint8_t * p_src {p_data};
 	const std::uint8_t * p_end {p_data+datasize};
 
-	for(size_t i=1;(i<(datasize-1)) && !p_text;++i)
+	for(size_t i=1;(i<(datasize-1)) && (p_text == nullptr);++i)
 		if(*p_src++ == 0)
 			p_text = p_src;
 
-	if(!p_text)
+	if(p_text == nullptr)
 		return log_error("Invalid 'tEXt' chunk!",LOG_WARNING);
 
 	size_t text_size = 0;
 	const std::uint8_t * p_text_end {p_text};
 
-	while(*p_text_end++ && (p_text_end<p_end))
+	while(((*p_text_end++) != 0) && (p_text_end<p_end))
 		++text_size;
 
 	//-------------------------------------------------------------------------
 	//	Create a testfield object.
 	//-------------------------------------------------------------------------
 	TextField textfield;
-	textfield.keyword			= std::string((const char *)&p_data[0]);
-	textfield.text				= std::string((const char *)p_text,text_size);
+	textfield.keyword			= std::string(reinterpret_cast<const char *>(p_data));
+	textfield.text				= std::string(reinterpret_cast<const char *>(p_text),text_size);
 //	textfield.b_compressed		= false;
 //	textfield.b_international	= false;
 	m_text.push_back(textfield);
@@ -1162,7 +1161,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	//           1 byte (null terminator)
 	//-------------------------------------------------------------------------
 	const std::uint8_t * p_text = p_data;
-	while((offset<datasize) && p_data[offset])
+	while((offset<datasize) && (p_data[offset] != 0u))
 	{
 		++size;
 		++offset;
@@ -1173,7 +1172,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	if((size<1) || ((datasize-offset)<4))
 		return log_error("Invalid itxt chunk! (keyword)",LOG_WARNING);
 
-	textfield.keyword.assign((const char *)p_text,size);
+	textfield.keyword.assign(reinterpret_cast<const char *>(p_text),size);
 
 	//-------------------------------------------------------------------------
 	// Compression Flag   - 1 byte
@@ -1182,7 +1181,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	auto comp_flag		= p_data[offset++];
 	//auto comp_method	= p_data[offset++];
 
-	if(comp_flag)
+	if(comp_flag != 0u)
 		return log_error("Compressed itxt chunk currently not supported!",LOG_WARNING);
 
 	//-------------------------------------------------------------------------
@@ -1191,7 +1190,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	//-------------------------------------------------------------------------
 	size = 0;
 	p_text = p_data + offset;
-	while((offset<datasize) && p_data[offset])
+	while((offset<datasize) && (p_data[offset] != 0u))
 	{
 		++size;
 		++offset;
@@ -1203,7 +1202,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 		return log_error("Invalid itxt chunk! (language tag)",LOG_WARNING);
 
 	if(size > 0)
-		textfield.language.assign((const char *)p_text,size);
+		textfield.language.assign(reinterpret_cast<const char *>(p_text),size);
 
 	//-------------------------------------------------------------------------
 	// Translated keyword - 0 or more bytes
@@ -1211,7 +1210,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	//-------------------------------------------------------------------------
 	size = 0;
 	p_text = p_data + offset;
-	while((offset<datasize) && p_data[offset])
+	while((offset<datasize) && (p_data[offset] != 0u))
 	{
 		++size;
 		++offset;
@@ -1228,7 +1227,7 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	size = datasize - offset;
 
 	if(size > 0)
-		textfield.text.assign((const char *)(p_data+offset),size);
+		textfield.text.assign(reinterpret_cast<const char *>(p_data+offset),size);
 		
 	//-------------------------------------------------------------------------
 	//	Add the text field.
@@ -1326,7 +1325,7 @@ PNGDecode::process_chunk_ihdr(const std::uint8_t * p_data,size_t /*datasize*/)
 	//-------------------------------------------------------------------------
 	// Allocate the image data.
 	//-------------------------------------------------------------------------
-	if(!m_out_components)
+	if(m_out_components == 0)
 	{
 		if(m_colourtype == INDEXED_COLOUR)
 			m_out_components = 3;
@@ -1351,7 +1350,7 @@ PNGDecode::process_chunk_plte(const std::uint8_t * p_data,size_t datasize)
 	if(m_colourtype != INDEXED_COLOUR)
 		return 0;
 
-	if(!m_depth)
+	if(m_depth == 0)
 		return log_error("Invalid depth while processing palette chunk!",LOG_ERROR);
 
 	size_t src_count = datasize / 3;
@@ -1381,13 +1380,13 @@ PNGDecode::decode_image_data(const std::uint8_t * p_data,size_t datasize)
 		[](const void* pBuf, int len, void *pUser)->int
 		{
 			// TODO: Do something with the de-compressed data.
-			((PNGDecode *)pUser)->process_image_data_segment((const std::uint8_t *)pBuf,(size_t)len);
+			(static_cast<PNGDecode *>(pUser))->process_image_data_segment(static_cast<const std::uint8_t *>(pBuf),static_cast<size_t>(len));
 			return len;
 		},
 		this,
 		TINFL_FLAG_PARSE_ZLIB_HEADER );
 
-	if(!status)
+	if(status == 0)
 	{
 		std::cout << "tinfl_decompress_mem_to_callback() failed!" << std::endl;
 		return -1;
@@ -1402,9 +1401,9 @@ PNGDecode::process_image_data_segment(const std::uint8_t * p_data,size_t datasiz
 {
 //	std::cout << "PROCESS: " << datasize << std::endl;
 
-	while(datasize)
+	while(datasize != 0u)
 	{
-		if(!m_scanline_offset && ((int)datasize >= m_scanline_size))
+		if((m_scanline_offset == 0) && (static_cast<int>(datasize) >= m_scanline_size))
 		{
 			auto p_out = &m_scanlines[m_active_scanline][0];
 			std::memcpy(p_out,p_data,m_scanline_size);

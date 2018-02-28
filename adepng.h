@@ -120,63 +120,60 @@ private:
 
 
 public:
-	PNGEncode(void);
-	~PNGEncode(void);
+	PNGEncode();
+	~PNGEncode() = default;
 
-	int						encode(	int										width,
-												int										height,
-												int										depth,
-												ColourType						type,
-												const unsigned char *	p_data,
-												png_write_func				write_func,
-												int										compression_level = 0);
+	int						encode(int											width,
+												int											height,
+												int											depth,
+												ColourType							type,
+												const unsigned char *		p_data,
+												const png_write_func &	write_func,
+												int											compression_level = 0);
 
 	void					add_text(	const std::string & keyword, const std::string & text);
 	void					add_text(	const std::string & keyword, const std::string & text, const std::string & language );
 
 private:
 	inline void		write_long(std::uint32_t v,unsigned char * p) {p[0]=(v>>24)&0x0FF;p[1]=(v>>16)&0x0FF;p[2]=(v>>8)&0x0FF;p[3]=v&0x0FF;}
-	void					write_text(png_write_func write_func);
+	void					write_text(const png_write_func & write_func);
 
-	void					write_chunk(	std::uint32_t					chunk_id,
-															const unsigned char *	p_data,
-															size_t								datasize,
-															png_write_func				write_func);
+	void					write_chunk(std::uint32_t						chunk_id,
+														const unsigned char *		p_data,
+														size_t									datasize,
+														const png_write_func &	write_func );
 
-	void					write_IHDR_chunk(	int								width,
-																	int								height,
-																	int								depth,
-																	ColourType				type,
-																	png_write_func		write_func );
+	void					write_IHDR_chunk(int											width,
+																	int											height,
+																	int											depth,
+																	ColourType							type,
+																	const png_write_func &	write_func );
 
-	void					write_tEXt_chunk(	TextField *				p_text,
-																	png_write_func		write_func );
+	void					write_tEXt_chunk( TextField * p_text, const png_write_func & write_func );
+	void					write_iTXt_chunk( TextField * p_text, const png_write_func & write_func );
 
-	void					write_iTXt_chunk(	TextField *				p_text,
-																	png_write_func		write_func );
+	void					write_image_data(	int											width,
+																	int											height,
+																	int											depth,
+																	ColourType							type,
+																	const unsigned char *		p_data,
+																	const png_write_func &	write_func,
+																	int											compression_level );
 
-	void					write_image_data(	int										width,
-																	int										height,
-																	int										depth,
-																	ColourType						type,
-																	const unsigned char *	p_data,
-																	png_write_func				write_func,
-																	int										compression_level );
+	void					write_image_data_uncompressed(int											width,
+																							int											height,
+																							int											depth,
+																							ColourType							type,
+																							const unsigned char *		p_data,
+																							const png_write_func &	write_func );
 
-	void					write_image_data_uncompressed(	int										width,
-																								int										height,
-																								int										depth,
-																								ColourType						type,
-																								const unsigned char *	p_data,
-																								png_write_func				write_func );
-
-	int						write_image_data_compressed(	int										width,
-																							int										height,
-																							int										depth,
-																							ColourType						type,
-																							const unsigned char *	p_data,
-																							png_write_func				write_func,
-																							int										compression_level );
+	int						write_image_data_compressed(int											width,
+																						int											height,
+																						int											depth,
+																						ColourType							type,
+																						const unsigned char *		p_data,
+																						const png_write_func &	write_func,
+																						int											compression_level );
 
 };
 
