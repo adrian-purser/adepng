@@ -79,12 +79,12 @@ public:
 	};
 
 private:
-	tinfl_decompressor									m_decompressor;
-	std::vector<std::uint8_t>							m_output_buffer;
+	tinfl_decompressor																m_decompressor;
+	std::vector<std::uint8_t>													m_output_buffer;
 	std::function<int(const std::uint8_t *,size_t)>		m_callback;
-	unsigned int										m_flags				= 0;
-	size_t												m_total_out			= 0;
-	size_t												m_out_ofs			= 0;
+	unsigned int																			m_flags						= 0;
+	size_t																						m_total_out				= 0;
+	size_t																						m_out_ofs					= 0;
 
 public:
 	InflateToCallback() = default;
@@ -92,25 +92,23 @@ public:
 	InflateToCallback(const InflateToCallback &) = delete;
 	InflateToCallback & operator=(const InflateToCallback &) = delete;
 
-	void create(std::function<int(const std::uint8_t *,size_t)> callback,
-				size_t											buffer_size = TINFL_LZ_DICT_SIZE )
+	void create(const std::function<int(const std::uint8_t *,size_t)> & callback,	size_t buffer_size = TINFL_LZ_DICT_SIZE )
 	{
 		m_callback = callback;
 		tinfl_init(&m_decompressor);
 		m_output_buffer.resize(buffer_size);
-		m_flags		=	TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_HAS_MORE_INPUT;
+		m_flags			=	TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_HAS_MORE_INPUT;
 		m_total_out = 0;
-		m_out_ofs	= 0;
+		m_out_ofs		= 0;
 	}
 
 	int write(const std::uint8_t * p_data,size_t size)
 	{
-		int result = INCOMPLETE;
-		size_t		in_buf_ofs = 0;
-		mz_uint8 *	p_out = (mz_uint8 *)&m_output_buffer[0];
+		int					result			= INCOMPLETE;
+		size_t			in_buf_ofs	= 0;
+		mz_uint8 *	p_out				= (mz_uint8 *)&m_output_buffer[0];
 
-		while(	(result == INCOMPLETE)
-				&& ((size-in_buf_ofs) > 0) )
+		while( (result == INCOMPLETE) && ((size-in_buf_ofs) > 0) )
 		{
 			//-----------------------------------------------------------------
 			//	Decompress the next section of the input data.
@@ -118,25 +116,23 @@ public:
 			size_t	in_buf_size		= size-in_buf_ofs;
 			size_t	dst_buf_size	= m_output_buffer.size() - m_out_ofs;
 
-			tinfl_status status		= tinfl_decompress(	
-											&m_decompressor, 
-											(const mz_uint8*)p_data + in_buf_ofs, 
-											&in_buf_size, 
-											p_out, 
-											p_out + m_out_ofs, 
-											&dst_buf_size,
-											m_flags );
+			tinfl_status status		= tinfl_decompress(	&m_decompressor,
+																								(const mz_uint8*)p_data + in_buf_ofs,
+																								&in_buf_size,
+																								p_out,
+																								p_out + m_out_ofs,
+																								&dst_buf_size,
+																								m_flags );
 
 			in_buf_ofs	+= in_buf_size;
-			m_out_ofs	+= dst_buf_size;
+			m_out_ofs		+= dst_buf_size;
 			m_total_out	+= dst_buf_size;
 
 			//-----------------------------------------------------------------
 			//	If finished or the buffer is full then flush the buffer 
 			//	contents by calling the registered callback function.
 			//-----------------------------------------------------------------
-			if(	m_out_ofs &&
-			   ((status <= TINFL_STATUS_DONE) || (m_out_ofs == m_output_buffer.size())) )
+			if(	m_out_ofs && ((status <= TINFL_STATUS_DONE) || (m_out_ofs == m_output_buffer.size())) )
 			{
 				if(m_callback(&m_output_buffer[0],m_out_ofs))
 				{
@@ -171,30 +167,30 @@ class BitStreamIn
 {
 private:
 	const std::uint8_t *	m_p_data			= nullptr;
-	size_t					m_size				= 0;
-	size_t					m_bits				= 0;
-	size_t					m_buffer_size		= 0;
-	std::uint16_t			m_buffer			= 0;
+	size_t								m_size				= 0;
+	size_t								m_bits				= 0;
+	size_t								m_buffer_size		= 0;
+	std::uint16_t					m_buffer			= 0;
 
 public:
 	BitStreamIn() = default;
 	~BitStreamIn() = default;
 	BitStreamIn(const std::uint8_t *	p_data,
-				size_t					size,
-				size_t					bits )
-				: m_p_data(p_data)
-				, m_size(size)
-				, m_bits(bits)
+							size_t								size,
+							size_t								bits )
+		: m_p_data(p_data)
+		, m_size(size)
+		, m_bits(bits)
 	{
 		assert((bits > 0) && (bits <= 8));
 	}
 
-	size_t	size_bits() const	{return (m_size * 8) + m_buffer_size;}
-	size_t	remainder() const	{return (m_bits ? (size_bits()%m_bits) : 0);}
-	size_t	size() const		{return (m_bits ? (size_bits()/m_bits) : 0);}
-	bool	empty() const		{return !!(size() > 0);}
+	size_t	size_bits() const	noexcept	{return (m_size * 8) + m_buffer_size;}
+	size_t	remainder() const	noexcept	{return (m_bits ? (size_bits()%m_bits) : 0);}
+	size_t	size() const noexcept				{return (m_bits ? (size_bits()/m_bits) : 0);}
+	bool		empty() const noexcept			{return !!(size() > 0);}
 
-	std::uint8_t read()
+	std::uint8_t read() noexcept
 	{
 		if(m_buffer_size < m_bits)
 		{
@@ -212,8 +208,8 @@ public:
 		return value;
 	}
 
-	std::uint8_t read_byte()	{return read() << (8-m_bits);}
-	std::uint8_t read_byte_repl()
+	std::uint8_t read_byte() noexcept	{return read() << (8-m_bits);}
+	std::uint8_t read_byte_repl() noexcept
 	{
 		auto value = read() << (8-m_bits);
 		std::uint8_t result = 0;
@@ -233,7 +229,7 @@ public:
 //
 //=============================================================================
 
-static bool				sg_b_crc_table_valid = false;
+static bool						sg_b_crc_table_valid = false;
 static std::uint32_t	sg_crc_table[256];
 
 static void make_crc_table()
@@ -291,13 +287,13 @@ PNGEncode::~PNGEncode(void)
 
 
 int
-PNGEncode::encode(	int						width,
-					int						height,
-					int						depth,
-					ColourType				type,
-					const unsigned char *	p_data,
-					png_write_func			write_func,
-					int						compression_level )
+PNGEncode::encode(	int										width,
+										int										height,
+										int										depth,
+										ColourType						type,
+										const unsigned char *	p_data,
+										png_write_func				write_func,
+										int										compression_level )
 {
 	if(!write_func)
 		return -1;
@@ -330,12 +326,12 @@ PNGEncode::add_text(const std::string & keyword,const std::string & text)
 
 void
 PNGEncode::add_text(const std::string & keyword,
-					const std::string & text,
-					const std::string & language )
+										const std::string & text,
+										const std::string & language )
 {
 	TextField field;
-	field.text				= text;
-	field.keyword			= keyword;
+	field.text					= text;
+	field.keyword				= keyword;
 	field.language			= language;
 //	field.b_international	= true;
 //	field.b_compressed		= b_compress;
@@ -343,10 +339,10 @@ PNGEncode::add_text(const std::string & keyword,
 }
 
 void
-PNGEncode::write_chunk(	std::uint32_t			chunk_id,
-						const unsigned char *	p_data,
-						size_t					datasize,
-						png_write_func			write_func )
+PNGEncode::write_chunk(	std::uint32_t					chunk_id,
+												const unsigned char *	p_data,
+												size_t								datasize,
+												png_write_func				write_func )
 {
 	unsigned char tempdata[8];
 
@@ -370,21 +366,21 @@ PNGEncode::write_chunk(	std::uint32_t			chunk_id,
 
 
 void
-PNGEncode::write_IHDR_chunk(int						width,
-							int						height,
-							int						depth,
-							ColourType				type,
-							png_write_func			write_func )
+PNGEncode::write_IHDR_chunk(int							width,
+														int							height,
+														int							depth,
+														ColourType			type,
+														png_write_func	write_func )
 {
 	std::uint8_t ihdr[IHDR_SIZE];
 
 	write_long(width,&ihdr[IHDR_WIDTH]);
 	write_long(height,&ihdr[IHDR_HEIGHT]);
 
-	ihdr[IHDR_DEPTH]				= static_cast<std::uint8_t>(depth);
-	ihdr[IHDR_COLOUR_TYPE]			= static_cast<std::uint8_t>(type);
-	ihdr[IHDR_COMPRESSION]			= m_compression;
-	ihdr[IHDR_FILTER]				= m_filter;
+	ihdr[IHDR_DEPTH]					= static_cast<std::uint8_t>(depth);
+	ihdr[IHDR_COLOUR_TYPE]		= static_cast<std::uint8_t>(type);
+	ihdr[IHDR_COMPRESSION]		= m_compression;
+	ihdr[IHDR_FILTER]					= m_filter;
 	ihdr[IHDR_INTERLACE]			= m_interlace;
 
 	write_chunk(CHUNK_IHDR,ihdr,IHDR_SIZE,write_func);
@@ -422,12 +418,12 @@ PNGEncode::write_iTXt_chunk(TextField * p_text,png_write_func write_func )
 	if(p_text)
 	{
 		std::string data(p_text->keyword);				// Keyword
-		data.push_back(0);								// Keyword terminator
+		data.push_back(0);												// Keyword terminator
 		data.push_back(0); //p_text->b_compressed ? 1:0);		// Compression flag. 0 = uncompressed. 1 = compressed.
-		data.push_back(0);								// Compression method.
-		data.append(p_text->language);					// Language tag.
-		data.push_back(0);								// Language tag terminator.
-		data.push_back(0);								// Translater keyword terminator.
+		data.push_back(0);												// Compression method.
+		data.append(p_text->language);						// Language tag.
+		data.push_back(0);												// Language tag terminator.
+		data.push_back(0);												// Translater keyword terminator.
 
 		data.append(p_text->text);
 		
@@ -436,13 +432,13 @@ PNGEncode::write_iTXt_chunk(TextField * p_text,png_write_func write_func )
 }
 
 void
-PNGEncode::write_image_data(int						width,
-							int						height,
-							int						depth,
-							ColourType				type,
-							const unsigned char *	p_data,
-							png_write_func			write_func,
-							int						compression_level )
+PNGEncode::write_image_data(int										width,
+														int										height,
+														int										depth,
+														ColourType						type,
+														const unsigned char *	p_data,
+														png_write_func				write_func,
+														int										compression_level )
 {
 	if(compression_level == 0)
 		write_image_data_uncompressed(width,height,depth,type,p_data,write_func);
@@ -451,22 +447,22 @@ PNGEncode::write_image_data(int						width,
 }
 
 void
-PNGEncode::write_image_data_uncompressed(	int						width,
-											int						height,
-											int						depth,
-											ColourType				type,
-											const unsigned char *	p_data,
-											png_write_func			write_func )
+PNGEncode::write_image_data_uncompressed(	int										width,
+																					int										height,
+																					int										depth,
+																					ColourType						type,
+																					const unsigned char *	p_data,
+																					png_write_func				write_func )
 {
 	std::array<unsigned char,m_idat_chunk_size>	buffer;
 	
-	static const char		bpp_table[8] = {1,0,3,1,2,0,4,0};
-	size_t					bpp = (bpp_table[type & 7] * depth)/8;
-	size_t					span = width * bpp;
-	size_t					chunk_size = 0;
-	bool					b_init = true;
-	size_t					hdr_offset = 0;
-	size_t					chunk_header_size = 0;
+	static const char		bpp_table[8]			= {1,0,3,1,2,0,4,0};
+	size_t							bpp								= (bpp_table[type & 7] * depth)/8;
+	size_t							span							= width * bpp;
+	size_t							chunk_size				= 0;
+	bool								b_init						= true;
+	size_t							hdr_offset				= 0;
+	size_t							chunk_header_size = 0;
 
 	for(int y=0;y<height;++y)
 	{
@@ -555,19 +551,19 @@ PNGEncode::write_image_data_uncompressed(	int						width,
 }
 
 int
-PNGEncode::write_image_data_compressed(	int						width,
-										int						height,
-										int						depth,
-										ColourType				type,
-										const unsigned char *	p_data,
-										png_write_func			write_func,
-										int						/*compression_level*/ )
+PNGEncode::write_image_data_compressed(	int										width,
+																				int										height,
+																				int										depth,
+																				ColourType						type,
+																				const unsigned char *	p_data,
+																				png_write_func				write_func,
+																				int						/*compression_level*/ )
 {
 #ifdef HAVE_MINIZ
 
-	static const char					bpp_table[8]		= {1,0,3,1,2,0,4,0};
-	size_t								bpp					= (bpp_table[type & 7] * depth)/8;
-	size_t								span				= width * bpp;
+	static const char		bpp_table[8]	= {1,0,3,1,2,0,4,0};
+	size_t							bpp						= (bpp_table[type & 7] * depth)/8;
+	size_t							span					= width * bpp;
 
 //	const size_t						buffer_size = ((width+1) * bpp * height)+64;
 	std::unique_ptr<tdefl_compressor>	p_compressor = std::make_unique<tdefl_compressor>();
@@ -576,7 +572,7 @@ PNGEncode::write_image_data_compressed(	int						width,
 
 	struct WriterInfo
 	{
-		PNGEncode *			p_encoder;
+		PNGEncode *				p_encoder;
 		png_write_func		write_func;
 	};
 
@@ -636,8 +632,8 @@ PNGDecode::log_error(const std::string & message,int severity)
 	switch(severity)
 	{
 		case LOG_WARNING :	m_error_string.append("WARNING: "); break;
-		case LOG_ERROR :	m_error_string.append("ERROR: "); result = -1;break;
-		default :			m_error_string.append("INFO: "); break;
+		case LOG_ERROR :		m_error_string.append("ERROR: "); result = -1;break;
+		default :						m_error_string.append("INFO: "); break;
 	}
 
 	m_error_string.append(message);
@@ -646,8 +642,8 @@ PNGDecode::log_error(const std::string & message,int severity)
 	switch(severity)
 	{
 		case LOG_WARNING :	std::clog << "WARNING: " << message << std::endl; break;
-		case LOG_ERROR :	std::clog << "ERROR: " << message << std::endl; break;
-		default :			std::clog << "INFO: " << message << std::endl; break;
+		case LOG_ERROR :		std::clog << "ERROR: " << message << std::endl; break;
+		default :						std::clog << "INFO: " << message << std::endl; break;
 	}
 
 	return result;
@@ -1273,12 +1269,12 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 int
 PNGDecode::process_chunk_ihdr(const std::uint8_t * p_data,size_t /*datasize*/)
 {
-	m_width			= read32(p_data);
-	m_height		= read32(&p_data[4]);
-	m_depth			= p_data[8];
+	m_width				= read32(p_data);
+	m_height			= read32(&p_data[4]);
+	m_depth				= p_data[8];
 	m_colourtype	= p_data[9];
 	m_compression	= p_data[10];
-	m_filter		= p_data[11];
+	m_filter			= p_data[11];
 	m_interlace		= p_data[12];
 
 	//-------------------------------------------------------------------------
@@ -1300,12 +1296,12 @@ PNGDecode::process_chunk_ihdr(const std::uint8_t * p_data,size_t /*datasize*/)
 	//-------------------------------------------------------------------------
 	switch(m_colourtype)
 	{
-		case GREYSCALE :			m_samples = 1;	break;
-		case TRUECOLOUR :			m_samples = 3;	break;
-		case INDEXED_COLOUR :		m_samples = 1;	
-									if(m_depth == 16) 
-										return log_error("Invalid Depth for Colour Type!");
-									break;
+		case GREYSCALE :					m_samples = 1;	break;
+		case TRUECOLOUR :					m_samples = 3;	break;
+		case INDEXED_COLOUR :			m_samples = 1;
+															if(m_depth == 16)
+																return log_error("Invalid Depth for Colour Type!");
+															break;
 
 		case GREYSCALE_ALPHA :		m_samples = 2;	break;
 		case TRUECOLOUR_ALPHA :		m_samples = 4;	break;
