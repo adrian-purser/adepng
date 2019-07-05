@@ -214,8 +214,8 @@ private:
 	std::string									m_error_string;
 
 public:
-	int										decode(const char * p_data,size_t datasize,int components=0,bool b_smallmem=true);
-	int										decode2(const char * p_data,size_t datasize,int components=0,bool b_smallmem=true);
+	int										decode(const std::uint8_t * p_data,size_t datasize,int components=0,bool b_smallmem=true);
+	int										decode2(const std::uint8_t * p_data,size_t datasize,int components=0,bool b_smallmem=true);
 
 	int										width() const	noexcept				{return m_width;}
 	int										height() const noexcept				{return m_height;}
@@ -225,8 +225,8 @@ public:
 	size_t								datasize() const noexcept			{return m_image_data.size();}
 
 private:
-	std::uint32_t					read32(const unsigned char * p_data) const noexcept	{return (p_data[0] << 24) | (p_data[1] << 16) | (p_data[2] << 8) | p_data[3];}
-	std::uint16_t					read16(const unsigned char * p_data) const noexcept	{return (p_data[0] << 8) | p_data[1];}
+	std::uint32_t					read32(const std::uint8_t * p_data) const noexcept	{return (p_data[0] << 24) | (p_data[1] << 16) | (p_data[2] << 8) | p_data[3];}
+	std::uint16_t					read16(const std::uint8_t * p_data) const noexcept	{return (p_data[0] << 8) | p_data[1];}
 
 	int										log_error(const std::string & message,int severity=LOG_ERROR);
 

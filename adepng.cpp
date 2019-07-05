@@ -999,7 +999,7 @@ PNGDecode::decode(const char * p_data,size_t datasize,int components,bool b_smal
 
 
 int
-PNGDecode::decode2(const char * p_data,size_t datasize,int components,bool /*b_smallmem*/)
+PNGDecode::decode2(const std::uint8_t * p_data,size_t datasize,int components,bool /*b_smallmem*/)
 {
 
 	m_width = 0;
