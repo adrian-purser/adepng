@@ -1613,9 +1613,9 @@ PNGDecode::process_scanline(std::uint8_t * p_data,const std::uint8_t * p_last_da
 
 	switch(m_colourtype)
 	{
-		case GREYSCALE :			process_scanline_greyscale(p_data,p_out); break;
-		case TRUECOLOUR :			process_scanline_truecolour(p_data,p_out); break;
-		case INDEXED_COLOUR :		process_scanline_indexed(p_data,p_out); break;
+		case GREYSCALE :					process_scanline_greyscale(p_data,p_out); break;
+		case TRUECOLOUR :					process_scanline_truecolour(p_data,p_out); break;
+		case INDEXED_COLOUR :			process_scanline_indexed(p_data,p_out); break;
 		case GREYSCALE_ALPHA :		process_scanline_greyscale_alpha(p_data,p_out); break;
 		case TRUECOLOUR_ALPHA :		process_scanline_truecolour_alpha(p_data,p_out); break;
 		default :					break;

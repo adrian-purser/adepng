@@ -205,7 +205,7 @@ private:
 
 	std::vector<std::uint32_t>	m_palette;
 
-	std::vector<std::uint8_t>		m_scanlines[2];					// Buffers for building scanlines.
+	std::vector<std::uint8_t>		m_scanlines[2];						// Buffers for building scanlines.
 	int													m_active_scanline	= 0;		// The current scanline being built;
 	int													m_scanline_size		= 0;		// The size of a scanline including filter byte.
 	int													m_scanline_offset	= 0;
@@ -217,12 +217,13 @@ public:
 	int										decode(const std::uint8_t * p_data,size_t datasize,int components=0,bool b_smallmem=true);
 	int										decode2(const std::uint8_t * p_data,size_t datasize,int components=0,bool b_smallmem=true);
 
-	int										width() const	noexcept				{return m_width;}
-	int										height() const noexcept				{return m_height;}
-	int										colourtype() const noexcept		{return m_colourtype;}
-	int										components() const noexcept		{return m_out_components;}
-	const std::uint8_t *	get_data() const noexcept			{return &m_image_data[0];}
-	size_t								datasize() const noexcept			{return m_image_data.size();}
+	int										width() const	noexcept								{return m_width;}
+	int										height() const noexcept								{return m_height;}
+	int										colourtype() const noexcept						{return m_colourtype;}
+	int										components() const noexcept						{return m_out_components;}
+	int										source_components() const noexcept		{return m_samples;}
+	const std::uint8_t *	get_data() const noexcept							{return &m_image_data[0];}
+	size_t								datasize() const noexcept							{return m_image_data.size();}
 
 private:
 	std::uint32_t					read32(const std::uint8_t * p_data) const noexcept	{return (p_data[0] << 24) | (p_data[1] << 16) | (p_data[2] << 8) | p_data[3];}
