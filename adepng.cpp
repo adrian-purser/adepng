@@ -594,7 +594,7 @@ PNGEncode::write_image_data_compressed(	int											width,
 					return MZ_TRUE;
 				},
 				&writer,
-				TDEFL_DEFAULT_MAX_PROBES | TDEFL_WRITE_ZLIB_HEADER );
+				(int)TDEFL_DEFAULT_MAX_PROBES | (int)TDEFL_WRITE_ZLIB_HEADER );
 
 	const char filter = 0;
 	for(int y=0;y<height;++y)
