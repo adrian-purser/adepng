@@ -1209,7 +1209,6 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 	//                      1 byte (null terminator)
 	//-------------------------------------------------------------------------
 	size = 0;
-	p_text = p_data + offset;
 	while((offset<datasize) && (p_data[offset] != 0u))
 	{
 		++size;
