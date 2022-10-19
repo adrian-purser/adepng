@@ -1,4 +1,5 @@
 set(SOURCES
+	adepng.h
 	adepng.cpp
 )
 
