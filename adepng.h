@@ -8,9 +8,9 @@
 //					lightweight way of loading and saving basic PNG files.
 //-----------------------------------------------------------------------------
 //  COPYRIGHT:		(C) Copyright 2013-2017 Adrian Purser. All Rights Reserved.
-//	LICENCE:		MIT - See LICENSE file for details
+//	LICENCE:			MIT - See LICENSE file for details
 //	MAINTAINER:		Adrian Purser <ade@adrianpurser.co.uk>
-//	CREATED:		27-JUL-2013 Adrian Purser <ade@adrianpurser.co.uk>
+//	CREATED:			27-JUL-2013 Adrian Purser <ade@adrianpurser.co.uk>
 //=============================================================================
 //
 //	Implemented Features
@@ -123,7 +123,7 @@ public:
 	PNGEncode();
 	~PNGEncode() = default;
 
-	int						encode(int											width,
+	int						encode(	int											width,
 												int											height,
 												int											depth,
 												ColourType							type,
@@ -215,7 +215,6 @@ private:
 
 public:
 	int										decode(const std::uint8_t * p_data,size_t datasize,int components=0,bool b_smallmem=true);
-	int										decode2(const std::uint8_t * p_data,size_t datasize,int components=0,bool b_smallmem=true);
 
 	int										width() const	noexcept								{return m_width;}
 	int										height() const noexcept								{return m_height;}
