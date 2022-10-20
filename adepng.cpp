@@ -885,32 +885,6 @@ PNGDecode::process_chunk_itxt(const std::uint8_t * p_data,size_t datasize)
 
 	return 0;
 
-
-	//size_t size		= strlen((const char *)p_dat);
-	//size_t offset	= 0;
-
-	//TextField textfield;
-
-	//textfield.keyword			= std::string((const char *)&p_dat[offset],size);
-	//offset += size+1;
-
-	//offset += 2;
-	//size = strlen((const char *)&p_dat[offset]);
-	//textfield.language = (size ? std::string((const char *)&p_dat[offset],size) : std::string("unknown"));
-
-	//offset += size+1;
-	//size = strlen((const char *)&p_dat[offset]);
-
-	//offset+= size+1;
-	//textfield.text				= std::string((const char *)&p_dat[offset],length-offset);
-
-	//textfield.b_compressed		= false;
-	//textfield.b_international	= false;
-	//m_text.push_back(textfield);
-
-
-
-
 }
 
 
